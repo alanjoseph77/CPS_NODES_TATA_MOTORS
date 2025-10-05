@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Integrated Laboratory</title>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    
+   <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Inter', sans-serif; 
+            background-color: #111;
+            display: flex;
+            height: 100vh;
+        }
+        
+        /* Main Layout */
+        #main-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        #canvas-container {
+            width: 70%;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #canvas-container canvas { 
+            display: block; 
+            width: 100%;
+            height: 100%;
+        }
+        
+        #sidebar {
+            width: 30%;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid #333;
+        }
+        
+        #info-container {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        #autoButton {
+            padding: 8px 16px;
+            font-size: 1rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        #autoButton:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #autoButton:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+        
+        /* ESP32 Popup Styles */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .popup-content {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 100%;
+            width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border: 2px solid #4a90e2;
+            position: relative;
+            color: white;
+        }
+        
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 15px;
+        }
+        
+        .popup-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: #ff4757;
+            border: none;
+            color: white;
+            font-size: 20px;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .close-btn:hover {
+            background: #ff3742;
+            transform: scale(1.1);
+        }
+        
+        .popup-image {
+            width: 100%;
+            max-width: 100%;
+            height: 635px;
+            object-fit: contain;
+            border-radius: 10px;
+            margin: 0;
+            border: 3px solid #4a90e2;
+            background-color: white;
+            display: block;
+        }
+        
+        .popup-description {
+            font-size: 17px;
+            line-height: 1.6;
+            color: #e8e8e8;
+            margin-top: 15px;
+        }
+        
+        .popup-specs {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .popup-specs h3 {
+            color: #4a90e2;
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        
+        .popup-specs ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .popup-specs li {
+            margin-bottom: 5px;
+        }
+        
+        .components-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .components-table th,
+        .components-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .components-table th {
+            background: rgba(74, 144, 226, 0.3);
+            color: #ffffff;
+            font-weight: bold;
+        }
+        
+        .components-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .components-table tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .popup-body {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+        }
+        
+        .popup-left {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .popup-right {
+            flex: 1;
+        }
+        
+        /* Sidebar Boxes */
+        .sidebar-box {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 2px solid #3498db;
+            border-radius: 10px;
+            margin: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Door Preview Window Styles */
+        #door-preview-container {
+            height: 40%;
+            display: block;
+            position: relative;
+        }
+        
+        /* Console Dashboard Styles */
+        #console-dashboard {
+            height: 50%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #door-preview-header {
+            background: rgba(52, 152, 219, 0.2);
+            color: white;
+            padding: 8px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            border-bottom: 1px solid #3498db;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .camera-switch-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid #3498db;
+            color: white;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .camera-switch-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .camera-switch-btn.active {
+            background: #3498db;
+            color: white;
+        }
+        
+        #door-preview-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            margin: 0;
+            padding: 0;
+            border: none;
+            position: absolute;
+            top: 50px;
+            left: 0;
+         
+        }
+        /* Console Dashboard Styles */
+        .dashboard-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 12px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            border-bottom: 2px solid #3498db;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        #console-output {
+            flex: 1;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', 'Arial', sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: calc(100% - 50px);
+            border: none;
+            outline: none;
+            resize: none;
+        }
+        
+        #console-output::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        #console-output::-webkit-scrollbar-track {
+            background: #2d2d2d;
+            border-radius: 5px;
+        }
+        
+        #console-output::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            border-radius: 5px;
+        }
+        
+        #console-output::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5dade2 0%, #3498db 100%);
+        }
+        
+        .console-line {
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            word-wrap: break-word;
+            background: rgba(255, 255, 255, 0.02);
+            border-left: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .console-line:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .console-timestamp {
+            color: #7f8c8d;
+            font-size: 11px;
+            margin-right: 10px;
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        
+        .console-message {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .console-info { 
+            color: #2ecc71; 
+            border-left-color: #2ecc71;
+        }
+        .console-warn { 
+            color: #f39c12; 
+            border-left-color: #f39c12;
+        }
+        .console-error { 
+            color: #e74c3c; 
+            border-left-color: #e74c3c;
+        }
+        .console-debug { 
+            color: #3498db; 
+            border-left-color: #3498db;
+        }
+        .console-success {
+            color: #27ae60;
+            border-left-color: #27ae60;
+        }
+        .console-system {
+            color: #9b59b6;
+            border-left-color: #9b59b6;
+        }
+    </style>
+</head>
+<body>
+    <div id="main-container">
+       
+        <!-- Main 3D Canvas Area (70%) -->
+        <div id="canvas-container">
+            <div id="main-title" style="position: absolute; top: 10px; left: 20px; z-index: 200; color: white; font-family: 'Arial', sans-serif; align-items: center; justify-content: center; margin-top: 100px; margin-left: 250px;">
+                <h1 style="margin: 0; font-size: 28px; font-weight: bold; -webkit-background-clip: text; -webkit-text-fill-color: rgba(59, 150, 242, 0.5); background-clip: text; text-align: center;">
+                    Molding Station – Manufacturing Unit
+                </h1>
+            </div>
+            <div id="info-container">
+                <button id="autoButton">Start Robot Automation</button>
+                <div id="info-status" style="color: white; font-size: 14px; margin-top: 10px;">Status: Ready</div>
+            </div>
+            <!-- Three.js canvas will be inserted here -->
+        </div>
+        
+        <!-- Right Sidebar (30%) -->
+        <div id="sidebar">
+            <!-- Door Preview Box (Top 45%) -->
+            <div id="door-preview-container" class="sidebar-box">
+                <div id="door-preview-header">
+                    <span>Door Status</span>
+                    <div>
+                        <button class="camera-switch-btn active" onclick="switchDoorCamera('front')">3D View</button>
+                        <button class="camera-switch-btn" onclick="switchDoorCamera('blueprint')">Blueprint</button>
+                    </div>
+                </div>
+                <canvas id="door-preview-canvas"></canvas>
+            </div>
+            
+            <!-- Console Dashboard Box (Bottom 50%) -->
+            <div id="console-dashboard" class="sidebar-box">
+                <div class="dashboard-header">
+                    System Console
+                </div>
+                <div id="console-output"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ESP32 Assembly Popup -->
+    <div id="esp32-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Access Control System</h2>
+                <button class="close-btn" onclick="closePopup('esp32-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="ESP32 Board" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>The Access Control System, utilizes the Raspberry Pi Pico W to implement RFID-based access control, enhancing security by allowing or denying entry based on authorized credentials. This system integrates with IoT platforms to monitor access in real-time, making it ideal for secure areas in educational, corporate, or residential environments. Its role within the cyber-physical system framework is to ensure a secure and manageable entry point that leverages cloud connectivity for efficient access logging and control.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>Raspberry Pi Pico W</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>RC522 RFID Reader</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Servo Motor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Buzzer</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Red LED</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Green LED</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+                
+                <!-- <div class="popup-specs">
+                    <h3>Key Features:</h3>
+                    <ul>
+                        <li>RFID-based access control system</li>
+                        <li>Real-time IoT monitoring and logging</li>
+                        <li>Secure credential verification</li>
+                        <li>Visual and audio feedback indicators</li>
+                        <li>Cloud connectivity for remote management</li>
+                        <li>Servo-controlled physical access mechanism</li>
+                        <li>Multi-color LED status indication</li>
+                        <li>Buzzer alerts for access events</li>
+                    </ul>
+                </div> -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Motion Detector Popup -->
+    <div id="esp32-motion-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Motion Detector</h2>
+                <button class="close-btn" onclick="closePopup('esp32-motion-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion1.jpg" alt="Motion Detector" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>The Motion Detector, equipped with an ESP8266, detects movement using a PIR sensor, making it an essential component for security systems in homes and businesses. This node's functionality highlights its role in automated security setups, where real-time motion detection triggers alerts and recordings, enhancing the safety and surveillance capabilities of the system</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 DevKit</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>PIR Motion Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Ultrasonic Distance Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Buzzer</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Status LED</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Wi-Fi Module</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Temperature Monitoring Popup -->
+    <div id="esp32-temperature-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Temperature Monitoring System</h2>
+                <button class="close-btn" onclick="closePopup('esp32-temperature-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="Temperature Monitor" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Advanced temperature monitoring system using ESP32 microcontroller with high-precision sensors for laboratory environment control. Provides real-time temperature and humidity monitoring with data logging capabilities and automated climate control integration.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 WROOM-32</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>DHT22 Temperature/Humidity</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>DS18B20 Digital Temperature</td>
+                                </tr>
+                                <tr>
+                                    <td>Display</td>
+                                    <td>OLED Display 128x64</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>MicroSD Card Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Wi-Fi & Bluetooth</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Lighting Control Popup -->
+    <div id="esp32-lighting-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Smart Lighting Control</h2>
+                <button class="close-btn" onclick="closePopup('esp32-lighting-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion.jpg" alt="Smart Lighting" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Intelligent lighting control system powered by ESP32 for automated laboratory illumination. Features adaptive brightness control, energy monitoring, and integration with occupancy sensors for optimal lighting conditions and energy efficiency.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32-S3</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>LDR Light Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>PIR Occupancy Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>LED Strip Controller</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Dimmer Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td>Power Monitoring IC</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security System Popup -->
+    <div id="esp32-security-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Security System</h2>
+                <button class="close-btn" onclick="closePopup('esp32-security-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="Security System" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Comprehensive security system utilizing ESP32 for multi-layered protection. Integrates various sensors and communication modules to provide real-time monitoring, intrusion detection, and emergency response capabilities for laboratory security.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 DevKit V1</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Magnetic Door Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Glass Break Detector</td>
+                                </tr>
+                                <tr>
+                                    <td>Camera</td>
+                                    <td>ESP32-CAM Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Siren/Alarm</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>GSM Module</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environmental Monitoring Popup -->
+    <div id="esp32-environmental-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Environmental Monitoring</h2>
+                <button class="close-btn" onclick="closePopup('esp32-environmental-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion1.jpg" alt="Environmental Monitor" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Advanced environmental monitoring station powered by ESP32 for comprehensive laboratory condition tracking. Monitors air quality, atmospheric pressure, gas levels, and environmental parameters critical for research and safety protocols.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 WROVER</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>BME680 Air Quality</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>MQ-135 Gas Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>UV Index Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Display</td>
+                                    <td>TFT LCD 2.8"</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>External EEPROM</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IoT Gateway Popup -->
+    <div id="esp32-iot-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">IoT Gateway Hub</h2>
+                <button class="close-btn" onclick="closePopup('esp32-iot-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="IoT Gateway" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Central IoT gateway hub based on ESP32 for laboratory device integration and data management. Provides seamless connectivity between various sensors, actuators, and cloud services for comprehensive laboratory automation and monitoring.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32-S2</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>LoRa Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Zigbee Coordinator</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>32GB Flash Memory</td>
+                                </tr>
+                                <tr>
+                                    <td>Network</td>
+                                    <td>Ethernet Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td>PoE Power Supply</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Laboratory Automation Popup -->
+    <div id="esp32-automation-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Laboratory Automation Controller</h2>
+                <button class="close-btn" onclick="closePopup('esp32-automation-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion.jpg" alt="Lab Automation" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Advanced laboratory automation controller using ESP32 for equipment control and process automation. Manages robotic systems, sample handling, and experimental procedures with precision timing and safety protocols for research applications.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32-PICO-D4</td>
+                                </tr>
+                                <tr>
+                                    <td>Motor Control</td>
+                                    <td>Stepper Motor Driver</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Encoder Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Interface</td>
+                                    <td>Relay Control Board</td>
+                                </tr>
+                                <tr>
+                                    <td>Safety</td>
+                                    <td>Emergency Stop Circuit</td>
+                                </tr>
+                                <tr>
+                                    <td>HMI</td>
+                                    <td>Touch Screen Interface</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Control System Popup -->
+    <div id="esp32-access-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Motion Detector</h2>
+                <button class="close-btn" onclick="closePopup('esp32-access-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion1.jpg" alt="Motion Detector" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>The Motion Detector, equipped with an ESP8266, detects movement using a PIR sensor, making it an essential component for security systems in homes and businesses. This node's functionality highlights its role in automated security setups, where real-time motion detection triggers alerts and recordings, enhancing the safety and surveillance capabilities of the system</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 DevKit</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>PIR Motion Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Ultrasonic Distance Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Buzzer</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Status LED</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Wi-Fi Module</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js" type="module" defer></script>
+</body>
+</html>
+            </div>
+        </div>
+    </div>
+
+    <!-- Motion Detector Popup -->
+    <div id="esp32-motion-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Motion Detector</h2>
+                <button class="close-btn" onclick="closePopup('esp32-motion-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion1.jpg" alt="Motion Detector" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>The Motion Detector, equipped with an ESP8266, detects movement using a PIR sensor, making it an essential component for security systems in homes and businesses. This node's functionality highlights its role in automated security setups, where real-time motion detection triggers alerts and recordings, enhancing the safety and surveillance capabilities of the system</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 DevKit</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>PIR Motion Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Ultrasonic Distance Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Buzzer</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Status LED</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Wi-Fi Module</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Temperature Monitoring Popup -->
+    <div id="esp32-temperature-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Temperature Monitoring System</h2>
+                <button class="close-btn" onclick="closePopup('esp32-temperature-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="Temperature Monitor" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Advanced temperature monitoring system using ESP32 microcontroller with high-precision sensors for laboratory environment control. Provides real-time temperature and humidity monitoring with data logging capabilities and automated climate control integration.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 WROOM-32</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>DHT22 Temperature/Humidity</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>DS18B20 Digital Temperature</td>
+                                </tr>
+                                <tr>
+                                    <td>Display</td>
+                                    <td>OLED Display 128x64</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>MicroSD Card Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Wi-Fi & Bluetooth</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Smart Lighting Control Popup -->
+    <div id="esp32-lighting-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Smart Lighting Control</h2>
+                <button class="close-btn" onclick="closePopup('esp32-lighting-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion.jpg" alt="Smart Lighting" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Intelligent lighting control system powered by ESP32 for automated laboratory illumination. Features adaptive brightness control, energy monitoring, and integration with occupancy sensors for optimal lighting conditions and energy efficiency.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32-S3</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>LDR Light Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>PIR Occupancy Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>LED Strip Controller</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Dimmer Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td>Power Monitoring IC</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security System Popup -->
+    <div id="esp32-security-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Security System</h2>
+                <button class="close-btn" onclick="closePopup('esp32-security-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="Security System" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Comprehensive security system utilizing ESP32 for multi-layered protection. Integrates various sensors and communication modules to provide real-time monitoring, intrusion detection, and emergency response capabilities for laboratory security.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 DevKit V1</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Magnetic Door Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Glass Break Detector</td>
+                                </tr>
+                                <tr>
+                                    <td>Camera</td>
+                                    <td>ESP32-CAM Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Siren/Alarm</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>GSM Module</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Environmental Monitoring Popup -->
+    <div id="esp32-environmental-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Environmental Monitoring</h2>
+                <button class="close-btn" onclick="closePopup('esp32-environmental-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion1.jpg" alt="Environmental Monitor" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Advanced environmental monitoring station powered by ESP32 for comprehensive laboratory condition tracking. Monitors air quality, atmospheric pressure, gas levels, and environmental parameters critical for research and safety protocols.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 WROVER</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>BME680 Air Quality</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>MQ-135 Gas Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>UV Index Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Display</td>
+                                    <td>TFT LCD 2.8"</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>External EEPROM</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IoT Gateway Popup -->
+    <div id="esp32-iot-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">IoT Gateway Hub</h2>
+                <button class="close-btn" onclick="closePopup('esp32-iot-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/access_control.jpg" alt="IoT Gateway" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Central IoT gateway hub based on ESP32 for laboratory device integration and data management. Provides seamless connectivity between various sensors, actuators, and cloud services for comprehensive laboratory automation and monitoring.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32-S2</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>LoRa Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Zigbee Coordinator</td>
+                                </tr>
+                                <tr>
+                                    <td>Storage</td>
+                                    <td>32GB Flash Memory</td>
+                                </tr>
+                                <tr>
+                                    <td>Network</td>
+                                    <td>Ethernet Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Power</td>
+                                    <td>PoE Power Supply</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Laboratory Automation Popup -->
+    <div id="esp32-automation-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Laboratory Automation Controller</h2>
+                <button class="close-btn" onclick="closePopup('esp32-automation-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion.jpg" alt="Lab Automation" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>Advanced laboratory automation controller using ESP32 for equipment control and process automation. Manages robotic systems, sample handling, and experimental procedures with precision timing and safety protocols for research applications.</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32-PICO-D4</td>
+                                </tr>
+                                <tr>
+                                    <td>Motor Control</td>
+                                    <td>Stepper Motor Driver</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Encoder Module</td>
+                                </tr>
+                                <tr>
+                                    <td>Interface</td>
+                                    <td>Relay Control Board</td>
+                                </tr>
+                                <tr>
+                                    <td>Safety</td>
+                                    <td>Emergency Stop Circuit</td>
+                                </tr>
+                                <tr>
+                                    <td>HMI</td>
+                                    <td>Touch Screen Interface</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Control System Popup -->
+    <div id="esp32-access-popup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 class="popup-title">Motion Detector</h2>
+                <button class="close-btn" onclick="closePopup('esp32-access-popup')">&times;</button>
+            </div>
+            <div class="popup-body">
+                <div class="popup-left">
+                    <img src="./img/Motion1.jpg" alt="Motion Detector" class="popup-image">
+                </div>
+                <div class="popup-right">
+                    <div class="popup-description">
+                        <p>The Motion Detector, equipped with an ESP8266, detects movement using a PIR sensor, making it an essential component for security systems in homes and businesses. This node's functionality highlights its role in automated security setups, where real-time motion detection triggers alerts and recordings, enhancing the safety and surveillance capabilities of the system</p>
+                        
+                        <h3>Components Summary</h3>
+                        <table class="components-table">
+                            <thead>
+                                <tr>
+                                    <th>Component Type</th>
+                                    <th>Component Name</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Controller</td>
+                                    <td>ESP32 DevKit</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>PIR Motion Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Sensor</td>
+                                    <td>Ultrasonic Distance Sensor</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Buzzer</td>
+                                </tr>
+                                <tr>
+                                    <td>Actuators</td>
+                                    <td>Status LED</td>
+                                </tr>
+                                <tr>
+                                    <td>Communication</td>
+                                    <td>Wi-Fi Module</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js" type="module" defer></script>
+</body>
+</html>
