@@ -4,8 +4,8 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 
-const BROKER_IP = "192.168.0.5"; // Pi3 MQTT broker
-const PORT = 1883; // MQTT port
+const BROKER_IP = ""; // Pi3 MQTT broker
+const PORT = ; // MQTT port
 
 // MQTT client
 const mqttClient = mqtt.connect(`mqtt://${BROKER_IP}:${PORT}`);
