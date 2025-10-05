@@ -8,6 +8,7 @@ This project contains HTML, CSS, and JavaScript files for CPS Nodes Tata Motors.
 ## 📂 Project Structure
 - `index.html` → Main entry point  
 - `script.js` → JavaScript functionality  
-- `img/` → Images used in the project  
+- `img/` → Images used in the project
+- `esp32-assembly.js`  → JavaScript functionality
 
 ---
