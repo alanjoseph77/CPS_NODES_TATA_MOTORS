@@ -12,13 +12,13 @@ This project contains HTML, CSS, and JavaScript files for CPS Nodes Tata Motors.
 - `esp32-assembly.js`  → JavaScript functionality
 
 ---
-To run this code after cloning:
+## To run this code after cloning:
 - open new terminal
 - install the following packages:
-  -- npm install mqtt
-  -- npm install express
-  -- npm install cors
-  -- npm install socket.io http
+- ` npm install mqtt`
+- `npm install express`
+- ` npm install cors`
+- ` npm install socket.io http`
 
 - Now run the server(javascript) file :
-  -- node Mqttsever.js
+  `node Mqttsever.js `
